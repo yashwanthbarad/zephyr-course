@@ -1,60 +1,7 @@
-menuconfig LED_SYSTEM
-    bool "Led subsystem"
-
-
-if LED_SYSTEM
-
-choice
-    prompt "LED blink speed"
-    default BLINK_SLEEP_1000MS
-
-config BLINK_SLEEP_250MS
-    bool "(250ms)Fast"
-config BLINK_SLEEP_1000MS
-    bool "(1s)Medium"
-config BLINK_SLEEP_2000MS
-    bool "(2s)Slow"
-endchoice
-
-
-
-menuconfig ADVANCE_SET
-    bool "Advanced LED Settings"
-if ADVANCE_SET
-config LED_BRIGHTNESS
-    int "LED Brightness(0-100)"
-    default 100
-    range 0 100
-config LED_FADE_DURATION
-    int "LED Fade duration(ms)"
+config APP_HEARTBEAT_PERIOD_MS
+    int "APP_HEARTBEAT_PERIOD_MS"
     default 500
-
-menuconfig EXPRT_SET
-    bool "Expert settings"
-
-if EXPRT_SET
-config ENABLE_LED_DEBUGGING
-    bool "Enable LED Debugging"
-config CUSTOM_BLINK_PATTERN
-    bool "Custom Blink Pattern"
-endif # expert setting
-
-endif # advance setting
-
-endif
-
-
-
-
-
-config CUSTOM_YASH_SLEEP_TIME_MS
-    int
-    default 1000 if BLINK_SLEEP_1000MS
-    default 2000 if BLINK_SLEEP_2000MS
-    default 250 if BLINK_SLEEP_250MS
-    default 100
-
-
+    range 100 2000
 
 
 source "Kconfig.zephyr"

@@ -1,46 +1,47 @@
-#include <zephyr/drivers/gpio.h>
+#include <errno.h>
+
+#include <zephyr/device.h>
 #include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+#include <zephyr/drivers/sensor.h>
 
-#define SLEEP_TIME_MS 1000
-
-/* The devicetree node identifier for the "led0" alias. */
-#define LED_NODE_R DT_ALIAS(app_led_r)
-#define LED_NODE_G DT_ALIAS(app_led_g)
-#define LED_NODE_B DT_ALIAS(app_led_b)
-    
-
-
-
-static const struct gpio_dt_spec led = GPIO_DT_SPEC_GET(LED_NODE_G, gpios);
-static const struct gpio_dt_spec led_g = GPIO_DT_SPEC_GET(LED_NODE_G, gpios);
-static const struct gpio_dt_spec led_b = GPIO_DT_SPEC_GET(LED_NODE_B, gpios);
+#include "../our_driver/our_driver.h"
 
 LOG_MODULE_REGISTER(main, LOG_LEVEL_INF);
 
 int main(void)
 {
-    bool led_state = true;
+	const struct device *led = DEVICE_DT_GET(DT_ALIAS(led_sensor));
+	struct sensor_value led_state;
+	int ret;
 
+	if (!device_is_ready(led)) {
+		LOG_ERR("LED sensor is not ready");
+		return -ENODEV;
+	}
 
-        
+	ret = our_driver_set_led_on_time(led, CONFIG_APP_HEARTBEAT_PERIOD_MS / 2);
+	if (ret < 0) {
+		LOG_ERR("Failed to configure LED on-time: %d", ret);
+		return ret;
+	}
 
-    if (!gpio_is_ready_dt(&led)) return 0;
+	while (1) {
+		ret = sensor_sample_fetch(led);
+		if (ret < 0) {
+			LOG_ERR("Failed to fetch LED state: %d", ret);
+			return ret;
+		}
 
-    if (gpio_pin_configure_dt(&led, GPIO_OUTPUT_ACTIVE) < 0) return 0;
+		k_msleep(CONFIG_APP_HEARTBEAT_PERIOD_MS);
 
-   
+		ret = sensor_channel_get(led, SENSOR_CHAN_PRIV_START, &led_state);
+		if (ret < 0) {
+			LOG_ERR("Failed to get LED state: %d", ret);
+			return ret;
+		}
 
-
-
-     while (1) {
-
-        if (gpio_pin_toggle_dt(&led) < 0) return 0;
-
-        led_state = !led_state;
-        LOG_INF("LED state: %s", led_state ? "ON" : "OFF");
-        // k_msleep(SLEEP_TIME_MS);
-        k_msleep(CONFIG_APP_HEARTBEAT_PERIOD_MS);
-    }
-    return 0;
+		LOG_INF("LED state before turning it off: %s", led_state.val1 ? "ON" : "OFF");
+		k_msleep(CONFIG_APP_HEARTBEAT_PERIOD_MS);
+	}
 }

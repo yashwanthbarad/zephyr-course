@@ -6,7 +6,10 @@
 #include <zephyr/device.h>
 #include <zephyr/drivers/gpio.h>
 #include <zephyr/drivers/sensor.h>
+#include <zephyr/kernel.h>
 #include <zephyr/logging/log.h>
+
+#include "our_driver.h"
 
 LOG_MODULE_REGISTER(led_sensor, CONFIG_SENSOR_LOG_LEVEL);
 
@@ -16,6 +19,7 @@ struct led_sensor_config {
 
 struct led_sensor_data {
     bool led_on;
+    uint32_t led_on_time_ms;
 };
 
 static int our_driver_sample_fetch(const struct device *dev, enum sensor_channel chan)
@@ -52,6 +56,8 @@ static int our_driver_channel_get(const struct device *dev, enum sensor_channel 
     val->val1 = data->led_on ? 1 : 0;
     val->val2 = 0;
 
+    k_msleep(data->led_on_time_ms);
+
     ret = gpio_pin_set_dt(&config->led, 0);
     if (ret < 0) {
         LOG_ERR("Failed to turn off LED: %d", ret);
@@ -80,6 +86,23 @@ static DEVICE_API(sensor, our_driver_api) = {
     .sample_fetch = our_driver_sample_fetch,
     .channel_get = our_driver_channel_get,
 };
+
+int our_driver_set_led_on_time(const struct device *dev, uint32_t duration_ms)
+{
+    struct led_sensor_data *data;
+
+    if (dev == NULL) {
+    	return -EINVAL;
+    }
+
+    if (dev->api != &our_driver_api) {
+    	return -ENOTSUP;
+    }
+
+    data = dev->data;
+    data->led_on_time_ms = duration_ms;
+    return 0;
+}
 
 #define LED_SENSOR_DEFINE(inst)							\
     static struct led_sensor_data led_sensor_data_##inst;			\
